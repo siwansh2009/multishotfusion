@@ -49,7 +49,20 @@ jobs:
           else
             echo 'android.kotlinVersion=1.9.25' >> gradle.properties
           fi
-          grep '^android.kotlinVersion=' gradle.properties
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("build.gradle")
+          s = p.read_text()
+          old = "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')"
+          new = "classpath('org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25')"
+          if old in s:
+              s = s.replace(old, new)
+          elif new not in s:
+              raise SystemExit("Could not find Kotlin Gradle plugin declaration in android/build.gradle")
+          p.write_text(s)
+          PY
+          echo "--- Kotlin version settings ---"
+          grep -n -E 'android.kotlinVersion|kotlin-gradle-plugin' gradle.properties build.gradle
       - name: Build debug APK
         working-directory: MultiShotFusion/android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
