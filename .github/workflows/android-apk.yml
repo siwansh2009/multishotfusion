@@ -34,7 +34,7 @@ jobs:
           plugins = [p for p in plugins if not (isinstance(p, list) and p and p[0] == plugin_name) and p != plugin_name]
           plugins.append([plugin_name, {"androidAppId": test_app_id}])
           expo["plugins"] = plugins
-          path.write_text(json.dumps(data, indent=2) + "\\n")
+          path.write_text(json.dumps(data, indent=2) + chr(10))
           print("Added official Google sample AdMob app ID; ads remain disabled by app settings.")
           PY
       - name: Fix native Android Kotlin sources
