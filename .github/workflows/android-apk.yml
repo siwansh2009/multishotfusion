@@ -106,6 +106,9 @@ jobs:
       - name: Install dependencies
         working-directory: MultiShotFusion
         run: npm install --no-audit --no-fund
+      - name: Install SDK-compatible Expo Asset dependency
+        working-directory: MultiShotFusion
+        run: npx expo install expo-asset --npm
       - name: Run project tests
         working-directory: MultiShotFusion
         run: npm test
