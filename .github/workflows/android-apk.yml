@@ -63,16 +63,42 @@ jobs:
               raise SystemExit("MultiShotFusionModule.kt: declaration block not found")
           path.write_text(source.replace(old, new, 1))
 
-          # Ensure the custom ReactPackage can be added to a mutable package list.
+          # Fix Expo 52's MainApplication template: register the package in the
+          # local 'packages' list before it is returned, not after the return.
           path = Path("plugins/withMultiShotFusion.js")
           source = path.read_text()
-          old = "PackageList(this).packages.apply {"
-          new = "PackageList(this).packages.toMutableList().apply {"
-          if old not in source:
-              raise SystemExit("withMultiShotFusion.js: PackageList insertion point not found")
-          path.write_text(source.replace(old, new, 1))
+          start = source.index("  config = withMainApplication(config, (cfg) => {")
+          end = source.index("\n\n  config = withAndroidManifest", start)
+          replacement = """  config = withMainApplication(config, (cfg) => {
+    let src = cfg.modResults.contents;
+    if (!src.includes('MultiShotFusionPackage')) {
+      const declaration = 'val packages = PackageList(this).packages';
+      if (src.includes(declaration)) {
+        const updatedDeclaration = declaration + '.toMutableList()';
+        const registration = '            packages.add(com.multishotfusion.camera.MultiShotFusionPackage())';
+        src = src.replace(
+          declaration,
+          updatedDeclaration + String.fromCharCode(10) + registration
+        );
+      } else {
+        const applyDeclaration = 'PackageList(this).packages.apply {';
+        if (!src.includes(applyDeclaration)) {
+          throw new Error('Cannot locate package list in generated MainApplication');
+        }
+        const registration = '        add(com.multishotfusion.camera.MultiShotFusionPackage())';
+        src = src.replace(
+          applyDeclaration,
+          applyDeclaration + String.fromCharCode(10) + registration
+        );
+      }
+    }
+    cfg.modResults.contents = src;
+    return cfg;
+  });"""
+          source = source[:start] + replacement + source[end:]
+          path.write_text(source)
 
-          print("Patched Camera2 callback order, capture result variables, and package registration.")
+          print("Patched Camera2 callbacks, capture result variables, and Expo package registration.")
           PY
       - uses: actions/setup-java@v4
         with:
