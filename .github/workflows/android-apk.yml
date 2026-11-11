@@ -41,6 +41,15 @@ jobs:
       - name: Generate Android project
         working-directory: MultiShotFusion
         run: npx expo prebuild --platform android --clean --no-install --non-interactive
+      - name: Set Kotlin version compatible with Compose compiler
+        working-directory: MultiShotFusion/android
+        run: |
+          if grep -q '^android.kotlinVersion=' gradle.properties; then
+            sed -i 's/^android.kotlinVersion=.*/android.kotlinVersion=1.9.25/' gradle.properties
+          else
+            echo 'android.kotlinVersion=1.9.25' >> gradle.properties
+          fi
+          grep '^android.kotlinVersion=' gradle.properties
       - name: Build debug APK
         working-directory: MultiShotFusion/android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
