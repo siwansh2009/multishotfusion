@@ -112,6 +112,23 @@ jobs:
       - name: Generate Android project
         working-directory: MultiShotFusion
         run: npx expo prebuild --platform android --clean --no-install --non-interactive
+      - name: Limit APK to Galaxy A16 5G ARM64
+        working-directory: MultiShotFusion/android
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          if 'abiFilters "arm64-v8a"' not in s:
+              pattern = re.compile(r'(defaultConfig\\s*\\{)')
+              s, count = pattern.subn(r'\\1\\n        ndk { abiFilters "arm64-v8a" }', s, count=1)
+              if count != 1:
+                  raise SystemExit("Could not find defaultConfig in app/build.gradle")
+          p.write_text(s)
+          print("Configured a single ARM64 ABI for the Samsung Galaxy A16 5G.")
+          PY
+          grep -n -A6 'defaultConfig' app/build.gradle
       - name: Set Kotlin version compatible with Compose compiler
         working-directory: MultiShotFusion/android
         run: |
@@ -137,10 +154,13 @@ jobs:
       - name: Build debug APK
         working-directory: MultiShotFusion/android
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
-      - name: Verify APK
+      - name: Verify APK package and signature
         run: |
           APK="MultiShotFusion/android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 "$APK"
           sha256sum "$APK"
       - uses: actions/upload-artifact@v4
         with:
