@@ -29,38 +29,41 @@ jobs:
 
           base = Path("native-android/java/com/multishotfusion/camera")
 
-          # CameraManager's Handler overload takes (cameraId, callback, handler).
+          # CameraManager Handler overload order is (cameraId, callback, handler).
           for name in ("ConcurrentCaptureController.kt", "SequentialCaptureController.kt"):
               path = base / name
               source = path.read_text()
               pattern = re.compile(
-                  r'manager\\.openCamera\\(logical\\.id,\\s*handler,\\s*'
-                  r'(object : CameraDevice\\.StateCallback\\(\\) \\{.*?\\n\\s*\\})\\)',
+                  r'manager\.openCamera\(logical\.id,\s*handler,\s*'
+                  r'(object : CameraDevice\.StateCallback\(\) \{.*?\n\s*\})\)',
                   re.S,
               )
               source, count = pattern.subn(
-                  lambda m: "manager.openCamera(logical.id, " + m.group(1) + ", handler)",
+                  lambda match: "manager.openCamera(logical.id, " + match.group(1) + ", handler)",
                   source,
               )
               if count != 1:
                   raise SystemExit(f"{name}: expected one openCamera call to fix, found {count}")
               path.write_text(source)
 
-          # These values are assigned in both the concurrent and fallback branches.
+          # Values are assigned in the concurrent and fallback branches.
           path = base / "MultiShotFusionModule.kt"
           source = path.read_text()
-          old = """        val usedIds: List<String>
-                val mode: String
-                val jpegById: Map<String, ByteArray>"""
-          new = """        var usedIds: List<String> = emptyList()
-                var mode: String = "sequential"
-                var jpegById: Map<String, ByteArray>"""
+          old = "\n".join([
+              "        val usedIds: List<String>",
+              "        val mode: String",
+              "        val jpegById: Map<String, ByteArray>",
+          ])
+          new = "\n".join([
+              "        var usedIds: List<String> = emptyList()",
+              "        var mode: String = \"sequential\"",
+              "        var jpegById: Map<String, ByteArray> = emptyMap()",
+          ])
           if old not in source:
               raise SystemExit("MultiShotFusionModule.kt: declaration block not found")
           path.write_text(source.replace(old, new, 1))
 
-          # RN's generated PackageList may expose a read-only List; make it mutable
-          # before the config plugin registers the custom native package.
+          # Ensure the custom ReactPackage can be added to a mutable package list.
           path = Path("plugins/withMultiShotFusion.js")
           source = path.read_text()
           old = "PackageList(this).packages.apply {"
@@ -69,7 +72,7 @@ jobs:
               raise SystemExit("withMultiShotFusion.js: PackageList insertion point not found")
           path.write_text(source.replace(old, new, 1))
 
-          print("Patched both Camera2 openCamera calls, capture result variables, and package registration.")
+          print("Patched Camera2 callback order, capture result variables, and package registration.")
           PY
       - uses: actions/setup-java@v4
         with:
