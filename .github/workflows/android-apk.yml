@@ -16,8 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Unpack original project
         run: |
-          test -s MultiShotFusion-source.zip
-          unzip -q MultiShotFusion-source.zip
+          ZIP="$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)"
+          test -n "$ZIP"
+          unzip -q "$ZIP"
           test -f MultiShotFusion/package.json
       - uses: actions/setup-java@v4
         with:
