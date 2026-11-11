@@ -20,6 +20,23 @@ jobs:
           test -n "$ZIP"
           unzip -q "$ZIP"
           test -f MultiShotFusion/package.json
+      - name: Configure AdMob Android test application ID
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path("MultiShotFusion/app.json")
+          data = json.loads(path.read_text())
+          expo = data.setdefault("expo", {})
+          plugins = expo.setdefault("plugins", [])
+          plugin_name = "react-native-google-mobile-ads"
+          test_app_id = "ca-app-pub-3940256099942544~3347511713"
+          plugins = [p for p in plugins if not (isinstance(p, list) and p and p[0] == plugin_name) and p != plugin_name]
+          plugins.append([plugin_name, {"androidAppId": test_app_id}])
+          expo["plugins"] = plugins
+          path.write_text(json.dumps(data, indent=2) + "\\n")
+          print("Added official Google sample AdMob app ID; ads remain disabled by app settings.")
+          PY
       - name: Fix native Android Kotlin sources
         working-directory: MultiShotFusion
         run: |
