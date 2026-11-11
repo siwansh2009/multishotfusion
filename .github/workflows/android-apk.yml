@@ -121,8 +121,8 @@ jobs:
           p = Path("app/build.gradle")
           s = p.read_text()
           if 'abiFilters "arm64-v8a"' not in s:
-              pattern = re.compile(r'(defaultConfig\\s*\\{)')
-              s, count = pattern.subn(r'\\1\\n        ndk { abiFilters "arm64-v8a" }', s, count=1)
+              pattern = re.compile(r'(defaultConfig\s*\{)')
+              s, count = pattern.subn(r'\1\n        ndk { abiFilters "arm64-v8a" }', s, count=1)
               if count != 1:
                   raise SystemExit("Could not find defaultConfig in app/build.gradle")
           p.write_text(s)
