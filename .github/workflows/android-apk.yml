@@ -9,15 +9,15 @@ permissions:
   contents: read
 
 jobs:
-  build-debug-apk:
+  build-standalone-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - name: Unpack original project
         run: |
-          ZIP="$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)"
-          test -n "$ZIP"
+          ZIP="MultiShotFusion(2).zip"
+          test -s "$ZIP"
           unzip -q "$ZIP"
           test -f MultiShotFusion/package.json
       - name: Configure AdMob Android test application ID
@@ -151,20 +151,23 @@ jobs:
           PY
           echo "--- Kotlin version settings ---"
           grep -n -E 'android.kotlinVersion|kotlin-gradle-plugin' gradle.properties build.gradle
-      - name: Build debug APK
+      - name: Build standalone release APK with embedded JavaScript
         working-directory: MultiShotFusion/android
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
-      - name: Verify APK package and signature
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+      - name: Verify standalone APK, embedded JS bundle, and signature
         run: |
-          APK="MultiShotFusion/android/app/build/outputs/apk/debug/app-debug.apk"
+          APK="MultiShotFusion/android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | head -n 8
+          BUNDLE_BYTES="$(unzip -l "$APK" | awk '$4 == "assets/index.android.bundle" {print $1}')"
+          test -n "$BUNDLE_BYTES" && test "$BUNDLE_BYTES" -gt 0
+          echo "Embedded React Native bundle: $BUNDLE_BYTES bytes"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 "$APK"
           sha256sum "$APK"
       - uses: actions/upload-artifact@v4
         with:
-          name: MultiShot-Fusion-debug-APK
-          path: MultiShotFusion/android/app/build/outputs/apk/debug/app-debug.apk
+          name: MultiShot-Fusion-Standalone-ARM64
+          path: MultiShotFusion/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
