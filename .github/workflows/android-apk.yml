@@ -63,38 +63,32 @@ jobs:
               raise SystemExit("MultiShotFusionModule.kt: declaration block not found")
           path.write_text(source.replace(old, new, 1))
 
-          # Fix Expo 52's MainApplication template: register the package in the
-          # local 'packages' list before it is returned, not after the return.
+          # Fix Expo 52 MainApplication: add the package to the local list before return.
           path = Path("plugins/withMultiShotFusion.js")
           source = path.read_text()
           start = source.index("  config = withMainApplication(config, (cfg) => {")
           end = source.index("\n\n  config = withAndroidManifest", start)
-          replacement = """  config = withMainApplication(config, (cfg) => {
-    let src = cfg.modResults.contents;
-    if (!src.includes('MultiShotFusionPackage')) {
-      const declaration = 'val packages = PackageList(this).packages';
-      if (src.includes(declaration)) {
-        const updatedDeclaration = declaration + '.toMutableList()';
-        const registration = '            packages.add(com.multishotfusion.camera.MultiShotFusionPackage())';
-        src = src.replace(
-          declaration,
-          updatedDeclaration + String.fromCharCode(10) + registration
-        );
-      } else {
-        const applyDeclaration = 'PackageList(this).packages.apply {';
-        if (!src.includes(applyDeclaration)) {
-          throw new Error('Cannot locate package list in generated MainApplication');
-        }
-        const registration = '        add(com.multishotfusion.camera.MultiShotFusionPackage())';
-        src = src.replace(
-          applyDeclaration,
-          applyDeclaration + String.fromCharCode(10) + registration
-        );
-      }
-    }
-    cfg.modResults.contents = src;
-    return cfg;
-  });"""
+          replacement_lines = [
+              "  config = withMainApplication(config, (cfg) => {",
+              "    let src = cfg.modResults.contents;",
+              "    if (!src.includes('MultiShotFusionPackage')) {",
+              "      const declaration = 'val packages = PackageList(this).packages';",
+              "      if (src.includes(declaration)) {",
+              "        const updatedDeclaration = declaration + '.toMutableList()';",
+              "        const registration = '            packages.add(com.multishotfusion.camera.MultiShotFusionPackage())';",
+              "        src = src.replace(declaration, updatedDeclaration + String.fromCharCode(10) + registration);",
+              "      } else {",
+              "        const applyDeclaration = 'PackageList(this).packages.apply {';",
+              "        if (!src.includes(applyDeclaration)) throw new Error('Cannot locate package list in MainApplication');",
+              "        const registration = '        add(com.multishotfusion.camera.MultiShotFusionPackage())';",
+              "        src = src.replace(applyDeclaration, applyDeclaration + String.fromCharCode(10) + registration);",
+              "      }",
+              "    }",
+              "    cfg.modResults.contents = src;",
+              "    return cfg;",
+              "  });",
+          ]
+          replacement = "\\n".join(replacement_lines)
           source = source[:start] + replacement + source[end:]
           path.write_text(source)
 
